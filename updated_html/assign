@@ -1,0 +1,14 @@
+Create an httpd container running on port 8000. Name the container as web5. Do not map any directory.
+Create an “index.html” file & copy this file inside the container and check if the website displays your webpage.
+Again, modify the “index.html” file and copy it inside the container, and check if the website is updated or not.
+
+docker build   -t   my-httpd-image   .
+
+docker run   -d   -p 8000:80   --name web5   my-httpd-image
+
+Test: localhost:8080
+
+Modify index.html and update it inside the container and then retest:
+
+docker cp index.html web5:/usr/local/apache2/htdocs/
+
