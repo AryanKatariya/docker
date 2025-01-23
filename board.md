@@ -942,4 +942,117 @@ on Linux is [/bin/sh", "-c"]
 on Windows is ["cmd", "/S", "/C"].
 
 ##### **12.HEALTHCHECK**
+The HEALTHCHECK instruction tells Docker how to test a container to check that it is still working correctly.
+
+This allows you to check things like a web site being served or an API endpoint responding with the correct data, allowing you to identify issues that appear, even if an underlying process still appears to be running normally.
+
+```
+HEALTHCHECK --interval=10s --timeout=1m --retries=5 CMD curl http ://localhost || exit 1
+```
+
+The HEALTHCHECK instruction contains options and then the command you wish to run itself, separated by a CMD keyword. 
+We’ve first specified three default options: 
+• --interval - defaults to 30 seconds. This is the period between health checks. In this case the first health check will run 10 seconds after container launch and subsequently every 10 seconds. 
+• --timeout - defaults to 30 seconds. If the health check takes longer the timeout then it is deemed to have failed. 
+• --retries - defaults to 3. The number of failed checks before the container is marked as unhealthy.
+
+We can see the state of the health check if HEALTHCHECK instruction is mapped, using the docker inspect command.
+```
+$ sudo docker inspect --format '{{.State.Health.Status}}' static_web 
+healthy
+```
+
+##### **13.ONBUILD**
+The ONBUILD instruction adds triggers to images. A trigger is executed when the image is used as the basis of another image
+
+The trigger inserts a new instruction in the build process, as if it were specified right after the FROM instruction.
+
+```
+ONBUILD ADD . /app/src 
+ONBUILD RUN cd /app/src; make
+```
+
+We now have an image with an ONBUILD instruction that uses the ADD instruction to add the contents of the directory we’re building from to the /var/www/ directory in our image.
+
+```
+$ sudo docker inspect 508efa4e4bf8 
+... 
+"OnBuild": [ 
+"ADD . /app/src", 
+"RUN cd /app/src/; make" 
+] 
+...
+```
+
+
+Creating a new Dockerfile for an apache2 image
+
+```
+FROM ubuntu:16.04 
+MAINTAINER Jigga Man "jigga@who.com" 
+RUN apt-get update; apt-get install -y apache2 
+ENV APACHE_RUN_USER www-data 
+ENV APACHE_RUN_GROUP www-data 
+ENV APACHE_LOG_DIR /var/log/apache2 
+ONBUILD ADD . /var/www/ 
+EXPOSE 80 
+ENTRYPOINT ["/usr/sbin/apache2"] 
+CMD ["-D", "FOREGROUND"]
+```
+
+```
+$ sudo docker build -t="jiggaman/apache2" . 
+... 
+Step 7 : ONBUILD ADD . /var/www/ 
+---> Running in 0e117f6ea4ba 
+---> a79983575b86 
+Successfully built a79983575b86
+```
+We now have an image with an ONBUILD instruction that uses the ADD instruction to add the contents of the directory we’re building from to the /var/www/ directory in our image.
+
+now building a new image called webapp from the following Dockerfile:
+```
+FROM jigga/apache2 
+MAINTAINER Jigga Man "jigga@who.com" 
+ENV APPLICATION_NAME webapp 
+ENV ENVIRONMENT development
+```
+
+On building a new image
+```
+$ sudo docker build -t="jamtur01/webapp" . 
+... 
+Step 0 : FROM jamtur01/apache2 # Executing 1 build triggers Step onbuild-0 : ADD . /var/www/ ---> 1a018213a59d ---> 1a018213a59d Step 1 : MAINTAINER James Turnbull "james@example.com" ... Successfully built 04829a360d86
+```
+
+
+
+
+
+
+---
+## VOLUME
+
+The -v option works by specifying a directory or mount on the local host separated from the directory on the container with a :. If the container directory doesn’t exist Docker will create it. 
+
+```
+FROM ubuntu:latest 
+MAINTAINER Jigga Man "jigga@who.com"  
+RUN apt-get -yqq update; apt-get -yqq install nginx 
+RUN mkdir -p /var/www/html/website 
+ADD global.conf /etc/nginx/conf.d/ 
+ADD nginx.conf /etc/nginx/nginx.conf 
+EXPOSE 80
+```
+
+```
+$ sudo docker build -t jiggaman/nginx
+```
+
+```
+$ sudo docker run -d -p 80 --name website -v $PWD/website:/var/www/html/website
+jiggaman/nginx nginx
+```
+
+We can also specify the read/write status of the container directory by adding either rw or ro after that directory.
 
